@@ -154,11 +154,38 @@ function PricingCard({ title, subtitle, price, unit = "/ user / month", features
 }
 
 function Contact() {
-  const [submitted, setSubmitted] = useState(false);
+  const [formStatus, setFormStatus] = useState("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    setSubmitted(true);
+    const formData = new FormData(event.currentTarget);
+    const submission = Object.fromEntries(formData.entries());
+    submission._subject = "MusterBox contact form submission";
+
+    setFormStatus("sending");
+    setErrorMessage("");
+
+    try {
+      const response = await fetch("https://formsubmit.co/ajax/praharlab@gmail.com", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify(submission)
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Your message could not be sent. Please try again.");
+      }
+
+      setFormStatus("success");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Your message could not be sent. Please try again.");
+      setFormStatus("error");
+    }
   }
 
   return (
@@ -181,20 +208,21 @@ function Contact() {
               <div></div>
             </aside>
             <form className="contact-form" onSubmit={handleSubmit}>
-              {submitted ? (
+              {formStatus === "success" ? (
                 <div className="success-message" role="status">
                   <span className="success-icon">✓</span>
                   <h2>Thanks for reaching out!</h2>
-                  <p>Your form is validated on this demo page. Connect it to your backend or form service to receive submissions.</p>
-                  <button className="button button-outline" type="button" onClick={() => setSubmitted(false)}>Send another message</button>
+                  <p>Your message has been submitted to our inbox. We usually reply within one business day.</p>
+                  <button className="button button-outline" type="button" onClick={() => setFormStatus("idle")}>Send another message</button>
                 </div>
               ) : (
                 <>
-                  <label>Full name<input name="name" autoComplete="name" required /></label>
-                  <label>Work email<input name="email" type="email" autoComplete="email" required /></label>
-                  <label>Company<input name="company" autoComplete="organization" required /></label>
-                  <label>Company size
-                    <select name="companySize" defaultValue="1–50 employees">
+                  <label>Full name (optional)<input name="name" autoComplete="name" /></label>
+                  <label>Work email (optional)<input name="email" type="email" autoComplete="email" /></label>
+                  <label>Company (optional)<input name="company" autoComplete="organization" /></label>
+                  <label>Company size (optional)
+                    <select name="companySize" defaultValue="">
+                      <option value="">Select company size (optional)</option>
                       <option>1–50 employees</option>
                       <option>51–200 employees</option>
                       <option>201–500 employees</option>
@@ -202,8 +230,11 @@ function Contact() {
                       <option>1,000+ employees</option>
                     </select>
                   </label>
-                  <label>How can we help?<textarea name="message" rows="5" required /></label>
-                  <button className="button button-primary submit-button" type="submit">Send message</button>
+                  <label>How can we help? (optional)<textarea name="message" rows="5" /></label>
+                  {formStatus === "error" && <p role="alert">{errorMessage}</p>}
+                  <button className="button button-primary submit-button" type="submit" disabled={formStatus === "sending"}>
+                    {formStatus === "sending" ? "Sending..." : "Send message"}
+                  </button>
                 </>
               )}
             </form>
@@ -215,10 +246,7 @@ function Contact() {
   );
 }
 
-function Footer({ compact = false }) {
-  if (compact) {
-    return <footer className="contact-footer"><div className="container"><span>MusterBox</span><span>[YOUR EMAIL] · [YOUR PHONE]</span></div></footer>;
-  }
+function Footer() {
   return (
     <footer className="site-footer">
       <div className="container footer-grid">
